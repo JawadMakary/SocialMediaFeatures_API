@@ -30,7 +30,9 @@ const userSchema = new mongoose.Schema(
     },
     followers: [
       {
+        // random unique id provided by mongodb
         type: Schema.Types.ObjectId,
+        // instead of relation in sql , we have reference in mongodb(refer to which model for example user) 
         ref: "User",
       },
     ],

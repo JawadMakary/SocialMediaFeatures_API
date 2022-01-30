@@ -1,10 +1,19 @@
 const user = require("../models/userModel");
+const checkAuth = require("../middleware/checkAuth.js");
 
 exports.followUnfollow = async (req, res) => {
-  if (req.params.id !== req.body.currentUserId) {
+  // a btn if flw is clicked-> show unfollow--> like on-off functionality
+  // user cant follow/unfollow himself
+  // ex: implement token and check if user is logged in via it
+  const userData=checkAuth(req);
+
+  if (req.params.id !== userData.data.id) {
     try {
       // current user
-      const currentUser = await user.findById(req.body.currentUserId);
+      // current user not needed if we have JWT token
+
+      const currentUser = await user.findById(userData.data.id);
+
       if (!currentUser)
         return res.status(400).json("Please login to perform this action");
 
@@ -13,10 +22,12 @@ exports.followUnfollow = async (req, res) => {
       if (!userToBeFollowed)
         return res.status(404).json("The user does not exist");
 
-      if (!userToBeFollowed.followers.includes(req.body.currentUserId)) {
+      // check if the user is already following the current user
+      if (!userToBeFollowed.followers.includes(userData.data.id)) {
         // update the user to be followed
         await userToBeFollowed.updateOne({
-          $push: { followers: req.body.currentUserId },
+          // push : mongodb operator to push to array
+          $push: { followers: userData.data.id },
         });
 
         // update the current user
@@ -24,7 +35,8 @@ exports.followUnfollow = async (req, res) => {
         res.status(200).json("You are now following this user");
       } else {
         await userToBeFollowed.updateOne({
-          $pull: { followers: req.body.currentUserId },
+          // pull: mongodb operator to pull from array
+          $pull: { followers: userData.data.id },
         });
 
         await currentUser.updateOne({ $pull: { following: req.params.id } });
@@ -53,6 +65,7 @@ exports.getfollowers_followingList = async (req, res) => {
         .status(400)
         .json({ message: `Please log in to access the ${choosenPath} list` });
 
+    // populate: mongoose (odm for mongodb) that generate docs based on ref in schema
     const result = await currentUser.populate({
       path: choosenPath,
       select: { fullname: 1, username: 1, email: 1, profilePicture: 1 },
