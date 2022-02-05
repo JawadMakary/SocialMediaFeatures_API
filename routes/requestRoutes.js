@@ -15,4 +15,6 @@ router.patch(
   router.get("/friendRequest/:receiverID/receiverReq", friendRequestsController.getReceiverRequest);
 router.get("/friendRequests/:senderID/getAllSenderFriendsRequests", friendRequestsController.getSenderAllFriendRequests);
 router.get("/friendRequests/:receiverID/getAllReceiverFriendsRequests", friendRequestsController.getReceiverAllFriendRequests);
+// acceptFriendRequest
+router.patch("/friendRequests/:requestID/accept", friendRequestsController.acceptFriendRequest);
 module.exports = router;

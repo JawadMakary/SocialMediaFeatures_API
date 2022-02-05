@@ -91,80 +91,123 @@ exports.cancelDeclineFriendRequest = async (req, res) => {
   }
 };
 // get friends request of the sender
-exports.getSenderAllFriendRequests=async(req,res)=>{
-  try{
-    const sender=await User.findById(req.body.senderID);
-    if(!sender){
-      return res.status(404).json({message:"sender does not exist"});
+exports.getSenderAllFriendRequests = async (req, res) => {
+  try {
+    const sender = await User.findById(req.body.senderID);
+    if (!sender) {
+      return res.status(404).json({ message: "sender does not exist" });
     }
-    const friendRequests=await FriendRequest.find({senderID:req.body.senderID});
-    const countSenderFriendsRequest=friendRequests.length;
-    return res.status(200).json({friendRequests,countSenderFriendsRequest});
-
-  }catch(err){
-    console.log(err)
+    const friendRequests = await FriendRequest.find({
+      senderID: req.body.senderID,
+    });
+    const countSenderFriendsRequest = friendRequests.length;
+    return res.status(200).json({ friendRequests, countSenderFriendsRequest });
+  } catch (err) {
+    console.log(err);
   }
-}
-
-
-
-
+};
 
 // get friend request of the receiver
-exports.getReceiverAllFriendRequests=async(req,res)=>{
-  try{
-    const receiver=await User.findById(req.body.receiverID);
-    if(!receiver){
-      return res.status(404).json({message:"receiver does not exist"});
+exports.getReceiverAllFriendRequests = async (req, res) => {
+  try {
+    const receiver = await User.findById(req.body.receiverID);
+    if (!receiver) {
+      return res.status(404).json({ message: "receiver does not exist" });
     }
-    const friendRequests=await FriendRequest.find({receiverID:req.body.receiverID});
-    const countReceiverFriendsRequest=friendRequests.length;
-    return res.status(200).json({friendRequests,countReceiverFriendsRequest});
-
-  }catch(err){
-    console.log(err)
+    const friendRequests = await FriendRequest.find({
+      receiverID: req.body.receiverID,
+    });
+    const countReceiverFriendsRequest = friendRequests.length;
+    return res
+      .status(200)
+      .json({ friendRequests, countReceiverFriendsRequest });
+  } catch (err) {
+    console.log(err);
   }
-}
+};
 
-exports.getReceiverRequest=async(req,res)=>{
-  try{
-    const receiver=await User.findById(req.body.receiverID);
-    if(!receiver){
-      return res.status(404).json({message:"receiver does not exist"});
+exports.getReceiverRequest = async (req, res) => {
+  try {
+    const receiver = await User.findById(req.body.receiverID);
+    if (!receiver) {
+      return res.status(404).json({ message: "receiver does not exist" });
     }
-    const friendRequest=await FriendRequest.findOne({receiverID:req.body.receiverID,senderID:req.body.senderID});
-    if(!friendRequest){
-      return res.status(404).json({message:"request does not exist"});
+    const friendRequest = await FriendRequest.findOne({
+      receiverID: req.body.receiverID,
+      senderID: req.body.senderID,
+    });
+    if (!friendRequest) {
+      return res.status(404).json({ message: "request does not exist" });
     }
     return res.status(200).json(friendRequest);
-  }catch(err){
-    console.log(err)
+  } catch (err) {
+    console.log(err);
   }
-}
-exports.getSenderRequest=async(req,res)=>{
-  try{
-    const sender=await User.findById(req.body.senderID);
-    if(!sender){
-      return res.status(404).json({message:"sender does not exist"});
+};
+exports.getSenderRequest = async (req, res) => {
+  try {
+    const sender = await User.findById(req.body.senderID);
+    if (!sender) {
+      return res.status(404).json({ message: "sender does not exist" });
     }
-    const friendRequest=await FriendRequest.findOne({receiverID:req.body.receiverID,senderID:req.body.senderID});
-    if(!friendRequest){
-      return res.status(404).json({message:"request does not exist"});
+    const friendRequest = await FriendRequest.findOne({
+      receiverID: req.body.receiverID,
+      senderID: req.body.senderID,
+    });
+    if (!friendRequest) {
+      return res.status(404).json({ message: "request does not exist" });
     }
     return res.status(200).json(friendRequest);
-  }catch(err){
-    console.log(err)
+  } catch (err) {
+    console.log(err);
   }
-}
+};
 
-
-exports.acceptFriendRequest=async(req,res)=>{
-  try{
-
-  }catch(err){
-    console.log(err)
+exports.acceptFriendRequest = async (req, res) => {
+  try {
+    const choosePath = req.path.split("/")[3];
+    const request = await checkRequestBasedOnStatus(req, "pending");
+    if (!request) {
+      return res.status(404).json({
+        message: "req not found",
+      });
+    }
+    const receiverID = request.receiverID;
+    const senderID = request.senderID;
+    if (
+      choosePath === actions.accept &&
+      receiverID.toString() === req.body.currentUserID.toString()
+    ) {
+      request.requestStatus = "accepted";
+      await request.save();
+      const sender = await User.findByIdAndUpdate(
+        senderID,
+        {
+          $push: { friends: receiverID },
+        },
+        { new: true }
+      );
+      if (!sender) {
+        return res.status(404).json({ message: "sender does not exist" });
+      }
+      const receiver = await User.findByIdAndUpdate(
+        {
+          _id: receiverID,
+        },
+        {
+          $push: { friends: senderID },
+        },
+        { new: true }
+      );
+      if (!receiver) {
+        return res.status(404).json({ message: "receiver does not exist" });
+      }
+      return res.status(200).json({ message: "request has been accepted" });
+    }
+    else{
+      return res.status(409).json({ message: "you cannot perform this action" });
+    }
+  } catch (err) {
+    console.log(err);
   }
-
-
-
-}
+};
