@@ -14,11 +14,11 @@ const friendRequestSchema = new mongoose.Schema(
       required: [true, "Please enter a receiver ID"],
     },
     requestStatus: {
-      type: String,
-      enum: ["pending", "accepted", "rejected", "cancelled"], // array of allowed values
-      default: "pending",
+        type: String,
+        default: "",
+        enum: ["pending", "accepted", "cancelled", "declined"],
+      },
     },
-  },
   {
     timestamps: true,
   }
