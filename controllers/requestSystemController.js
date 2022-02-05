@@ -3,6 +3,8 @@ const FriendRequest = require("../models/requestModel");
 const actions = require("../actions.json");
 const limitRequests = require("../middleware/limitRequests");
 const checkExistingFriendRequest = require("../middleware/checkExistingFriendRequest");
+const checkRequestBasedOnStatus = require("../middleware/checkRequestBasedOnStatus");
+const checkAuth = require("../middleware/checkAuth.js");
 
 exports.sendRequest = async (req, res) => {
   try {
@@ -49,5 +51,42 @@ exports.sendRequest = async (req, res) => {
     }
   } catch (error) {
     console.log(error);
+  }
+};
+exports.cancelDeclineFriendRequest = async (req, res) => {
+  const userData = checkAuth(req);
+
+  try {
+    const choosePath = req.path.split("/")[3];
+    // check if req doc exists
+    const request = await checkRequestBasedOnStatus(req, "pending");
+    if (!request) {
+      return res.status(404).json({ message: "request does not exist" });
+    }
+    if (
+      choosePath === actions.cancel &&
+      request.senderID.toString() === userData.data.id.toString()
+    ) {
+      // cancel the request
+      request.requestStatus = "cancelled";
+      // we need to wait for the request to be saved in the db
+      await request.save();
+      return res.status(200).json({ message: "request has been cancelled" });
+    } else if (
+      choosePath === actions.decline &&
+      request.receiverID.toString() === req.body.currentUserID.toString()
+    ) {
+      // decline the request
+      request.requestStatus = "declined";
+      // we need to wait for the request to be saved in the db
+      await request.save();
+      return res.status(200).json({ message: "request has been declined" });
+    } else {
+      return res
+        .status(409)
+        .json({ message: "you cannot perform this action" });
+    }
+  } catch (err) {
+    console.log(err);
   }
 };
