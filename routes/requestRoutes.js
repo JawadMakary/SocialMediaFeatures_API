@@ -5,11 +5,11 @@ const friendRequestsController = require("../controllers/requestSystemController
 router.post("/requestFriendship", friendRequestsController.sendRequest);
 router.patch(
     "/friendRequests/:requestID/cancel",
-    friendRequestsController.cancel_declineFriendRequest
+    friendRequestsController.cancelDeclineFriendRequest
   );
   router.patch(
     "/friendRequests/:requestID/decline",
-    friendRequestsController.cancel_declineFriendRequest
+    friendRequestsController.cancelDeclineFriendRequest
   );
 
 module.exports = router;
