@@ -125,3 +125,46 @@ exports.getReceiverAllFriendRequests=async(req,res)=>{
     console.log(err)
   }
 }
+
+exports.getReceiverRequest=async(req,res)=>{
+  try{
+    const receiver=await User.findById(req.body.receiverID);
+    if(!receiver){
+      return res.status(404).json({message:"receiver does not exist"});
+    }
+    const friendRequest=await FriendRequest.findOne({receiverID:req.body.receiverID,senderID:req.body.senderID});
+    if(!friendRequest){
+      return res.status(404).json({message:"request does not exist"});
+    }
+    return res.status(200).json(friendRequest);
+  }catch(err){
+    console.log(err)
+  }
+}
+exports.getSenderRequest=async(req,res)=>{
+  try{
+    const sender=await User.findById(req.body.senderID);
+    if(!sender){
+      return res.status(404).json({message:"sender does not exist"});
+    }
+    const friendRequest=await FriendRequest.findOne({receiverID:req.body.receiverID,senderID:req.body.senderID});
+    if(!friendRequest){
+      return res.status(404).json({message:"request does not exist"});
+    }
+    return res.status(200).json(friendRequest);
+  }catch(err){
+    console.log(err)
+  }
+}
+
+
+exports.acceptFriendRequest=async(req,res)=>{
+  try{
+
+  }catch(err){
+    console.log(err)
+  }
+
+
+
+}
