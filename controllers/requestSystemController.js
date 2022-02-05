@@ -90,3 +90,38 @@ exports.cancelDeclineFriendRequest = async (req, res) => {
     console.log(err);
   }
 };
+// get friends request of the sender
+exports.getSenderAllFriendRequests=async(req,res)=>{
+  try{
+    const sender=await User.findById(req.body.senderID);
+    if(!sender){
+      return res.status(404).json({message:"sender does not exist"});
+    }
+    const friendRequests=await FriendRequest.find({senderID:req.body.senderID});
+    const countSenderFriendsRequest=friendRequests.length;
+    return res.status(200).json({friendRequests,countSenderFriendsRequest});
+
+  }catch(err){
+    console.log(err)
+  }
+}
+
+
+
+
+
+// get friend request of the receiver
+exports.getReceiverAllFriendRequests=async(req,res)=>{
+  try{
+    const receiver=await User.findById(req.body.receiverID);
+    if(!receiver){
+      return res.status(404).json({message:"receiver does not exist"});
+    }
+    const friendRequests=await FriendRequest.find({receiverID:req.body.receiverID});
+    const countReceiverFriendsRequest=friendRequests.length;
+    return res.status(200).json({friendRequests,countReceiverFriendsRequest});
+
+  }catch(err){
+    console.log(err)
+  }
+}

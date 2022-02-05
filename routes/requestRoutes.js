@@ -11,5 +11,6 @@ router.patch(
     "/friendRequests/:requestID/decline",
     friendRequestsController.cancelDeclineFriendRequest
   );
-
+router.get("/friendRequests/:senderID/getAllSenderFriendsRequests", friendRequestsController.getSenderAllFriendRequests);
+router.get("/friendRequests/:receiverID/getAllReceiverFriendsRequests", friendRequestsController.getReceiverAllFriendRequests);
 module.exports = router;
