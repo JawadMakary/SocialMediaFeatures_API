@@ -31,8 +31,8 @@ exports.like = async (req, res) => {
         },
       });
       return res.status(200).json("liked");
-        // post.likes.push(req.body["userID"]);
-        //  post.save();
+      // post.likes.push(req.body["userID"]);
+      //  post.save();
     } else {
       await post.updateOne({
         $pull: {
@@ -41,6 +41,42 @@ exports.like = async (req, res) => {
       });
       return res.status(200).json("unliked");
     }
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+// add option that work dynamically on friends and followers
+exports.fetchTimelinePosts = async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.params["userID"]);
+    if (!currentUser) {
+      return res.status(404).json("user does not exist");
+    }
+    const currentUserPosts = await Post.find({
+      postOwner: currentUser._id,
+    });
+
+    const friendsPosts = await Promise.all(
+      currentUser.friends.map(async (friendID) => {
+        return Post.find({
+          postOwner: friendID,
+        });
+      })
+    );
+    const followersPosts = await Promise.all(
+      currentUser.followers.map(async (followerID) => {
+        return Post.find({
+          postOwner: followerID,
+        });
+      })
+    );
+    const timelinePosts = currentUserPosts.concat(
+      ...friendsPosts,
+      ...followersPosts
+    );
+    return timelinePosts.length <= 0
+      ? res.status(404).json("no posts")
+      : res.status(200).json(timelinePosts);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
