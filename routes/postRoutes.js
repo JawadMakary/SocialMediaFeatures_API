@@ -1,7 +1,7 @@
-const express=require("express");
-const router=express.Router();
-const postController=require("../controllers/postController");
+const express = require("express");
+const router = express.Router();
+const postController = require("../controllers/postController");
 
-router.post('/newPost',postController.createPost);
-
-module.exports=router;
+router.post("/newPost", postController.createPost);
+router.patch("/:postID/like", postController.like);
+module.exports = router;

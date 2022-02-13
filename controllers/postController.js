@@ -18,3 +18,30 @@ exports.createPost = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
+exports.like = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params["postID"]);
+    if (!post) {
+      return res.status(404).json("post does not exist");
+    }
+    if (!post.likes.includes(req.body["userID"])) {
+      await post.updateOne({
+        $push: {
+          likes: req.body["userID"],
+        },
+      });
+      return res.status(200).json("liked");
+        // post.likes.push(req.body["userID"]);
+        //  post.save();
+    } else {
+      await post.updateOne({
+        $pull: {
+          likes: req.body["userID"],
+        },
+      });
+      return res.status(200).json("unliked");
+    }
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
