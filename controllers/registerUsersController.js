@@ -1,9 +1,12 @@
 const bcrypt = require("bcrypt");
 const User = require("../models/userModel");
+const secureData=require('../helpers/securityHelper')
+
 
 // REGISTER
 exports.registerUsers = async (req, res) => {
   try {
+    const encryptedEmail =secureData.encrypt_DecryptData(req.body.email,"encrypt")
     const userExist = await User.findOne({
       $or: [{ email: req.body.email }, { username: req.body.username }],
     });
@@ -20,8 +23,9 @@ exports.registerUsers = async (req, res) => {
     const newUser = new User({
       fullname: req.body.fullname,
       username: req.body.username,
-      email: req.body.email,
+      email: encryptedEmail,
       password: hashedPassword,
+
     });
     // Saving the user to the database
     const user = await newUser.save();

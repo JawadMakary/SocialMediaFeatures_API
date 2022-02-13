@@ -45,7 +45,7 @@ exports.like = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
-// add option that work dynamically on friends and followers
+// add option that work dynamically check if friend or follower
 exports.fetchTimelinePosts = async (req, res) => {
   try {
     const currentUser = await User.findById(req.params["userID"]);
