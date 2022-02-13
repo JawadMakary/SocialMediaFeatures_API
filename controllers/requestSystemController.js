@@ -203,9 +203,10 @@ exports.acceptFriendRequest = async (req, res) => {
         return res.status(404).json({ message: "receiver does not exist" });
       }
       return res.status(200).json({ message: "request has been accepted" });
-    }
-    else{
-      return res.status(409).json({ message: "you cannot perform this action" });
+    } else {
+      return res
+        .status(409)
+        .json({ message: "you cannot perform this action" });
     }
   } catch (err) {
     console.log(err);
