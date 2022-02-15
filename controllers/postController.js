@@ -52,31 +52,35 @@ exports.fetchTimelinePosts = async (req, res) => {
     if (!currentUser) {
       return res.status(404).json("user does not exist");
     }
-    const currentUserPosts = await Post.find({
-      postOwner: currentUser._id,
-    });
+    if (req.params["userID"]) {
+      const currentUserPosts = await Post.find({
+        postOwner: currentUser._id,
+      });
 
-    const friendsPosts = await Promise.all(
-      currentUser.friends.map(async (friendID) => {
-        return Post.find({
-          postOwner: friendID,
-        });
-      })
-    );
-    const followersPosts = await Promise.all(
-      currentUser.followers.map(async (followerID) => {
-        return Post.find({
-          postOwner: followerID,
-        });
-      })
-    );
-    const timelinePosts = currentUserPosts.concat(
-      ...friendsPosts,
-      ...followersPosts
-    );
-    return timelinePosts.length <= 0
-      ? res.status(404).json("no posts")
-      : res.status(200).json(timelinePosts);
+      const friendsPosts = await Promise.all(
+        currentUser.friends.map(async (friendID) => {
+          Post.find({
+            postOwner: friendID,
+          });
+        })
+      );
+      timelinePosts = currentUserPosts.concat(...friendsPosts);
+      return timelinePosts.length <= 0
+        ? res.status(404).json("no posts")
+        : res.status(200).json(timelinePosts);
+    } else {
+      const followersPosts = await Promise.all(
+        currentUser.followers.map(async (followerID) => {
+          Post.find({
+            postOwner: followerID,
+          });
+        })
+      );
+      timelinePosts = currentUserPosts.concat(...followersPosts);
+      return timelinePosts.length <= 0
+        ? res.status(404).json("no posts")
+        : res.status(200).json(timelinePosts);
+    }
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
