@@ -1,35 +1,34 @@
 const express = require("express");
 const router = express.Router();
+
 const friendRequestsController = require("../controllers/requestSystemController");
 
-router.post("/requestFriendship", friendRequestsController.sendRequest);
+router.post("/requestfriendship", friendRequestsController.sendFriendRequest);
+
 router.patch(
   "/friendRequests/:requestID/cancel",
-  friendRequestsController.cancelDeclineFriendRequest
+  friendRequestsController.cancel_declineFriendRequest
 );
 router.patch(
   "/friendRequests/:requestID/decline",
-  friendRequestsController.cancelDeclineFriendRequest
+  friendRequestsController.cancel_declineFriendRequest
 );
-router.get(
-  "/friendRequest/:senderID/senderReq",
-  friendRequestsController.getSenderRequest
-);
-router.get(
-  "/friendRequest/:receiverID/receiverReq",
-  friendRequestsController.getReceiverRequest
-);
-router.get(
-  "/friendRequests/:senderID/getAllSenderFriendsRequests",
-  friendRequestsController.getSenderAllFriendRequests
-);
-router.get(
-  "/friendRequests/:receiverID/getAllReceiverFriendsRequests",
-  friendRequestsController.getReceiverAllFriendRequests
-);
-// acceptFriendRequest
+
 router.patch(
   "/friendRequests/:requestID/accept",
   friendRequestsController.acceptFriendRequest
 );
+
+router.get(
+  "/:userID/pendingRequests",
+  friendRequestsController.getSent_Received_Requests
+);
+
+router.get(
+  "/:userID/receivedRequests",
+  friendRequestsController.getSent_Received_Requests
+);
+
+router.get("/:userID/friends", friendRequestsController.getFriendsList);
+
 module.exports = router;

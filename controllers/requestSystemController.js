@@ -1,163 +1,136 @@
 const User = require("../models/userModel");
 const FriendRequest = require("../models/requestModel");
-const actions = require("../actions.json");
-const limitRequests = require("../middleware/limitRequests");
-const checkExistingFriendRequest = require("../middleware/checkExistingFriendRequest");
-const checkRequestBasedOnStatus = require("../middleware/checkRequestBasedOnStatus");
-const checkAuth = require("../middleware/checkAuth.js");
+const actions = require("../actions");
 
-exports.sendRequest = async (req, res) => {
+const checkExistingFriendRequest = async (req, status) => {
   try {
-    // check if sender or receiver is != ""
+    const checkExistence = await FriendRequest.find({
+      $and: [
+        {
+          $and: [
+            { senderID: req.body.senderID },
+            { receiverID: req.body.receiverID },
+          ],
+        },
+        { requestStatus: { $eq: status } },
+      ],
+    });
+    if (checkExistence.length == 0) return false;
+    return true;
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const checkRequestBasedOnStatus = async (req, status) => {
+  try {
+    const request = await FriendRequest.findOne({
+      $and: [{ _id: req.params.requestID }, { requestStatus: { $eq: status } }],
+    });
+
+    if (request) return request;
+    return null;
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const limitRequests = async (req, status) => {
+  try {
+    const requests = await FriendRequest.countDocuments({
+      $and: [
+        { senderID: req.body.senderID },
+        { requestStatus: { $eq: status } },
+      ],
+    });
+
+    if (requests >= 3) return true;
+    return false;
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+exports.sendFriendRequest = async (req, res) => {
+  try {
+    // 1 - check if the sender and the receiver exist
     const sender = await User.findById(req.body.senderID);
     const receiver = await User.findById(req.body.receiverID);
 
     if (!sender || !receiver) {
       return res
         .status(404)
-        .json({ message: "sender or receiver or both of them does not exist" });
+        .json({ message: "Both sender and receiver must exist" });
     }
-    // check if the sender is already following the receiver
-    const friendsList = sender.friends.includes(req.body.receiverID);
-    if (friendsList) {
-      return res
-        .status(409)
-        .json({ message: "You are already friends with this user" });
+
+    // check if the receiver exist in our friends list
+    const friendList = sender.friends.includes(req.body.receiverID);
+    if (friendList) {
+      return res.status(409).json({
+        message: `You are already a friend with ${receiver.fullname}`,
+      });
     }
-    // limit the number of requests sent by a single user when declined
-    var test = await limitRequests(req, "declined");
+
+    // limit sender requests
+    const test = await limitRequests(req, "declined");
     if (test) {
       return res
-        .status(429) //too many requests
-        .json({
-          message:
-            " you cannot send anymore req because you exceeded the limit (4) ",
-        });
+        .status(429)
+        .json({ message: "You cannot send any new request" });
     }
-    // step 2
-    // if the request status is pending
+
+    // 2 - check if the request is pending
     const friendRequest = await checkExistingFriendRequest(req, "pending");
-    if (!friendRequest) {
-      return res.status(409).json({ message: "request is already sent" });
+    if (friendRequest) {
+      return res.status(409).json({ message: "Request already sent" });
     } else {
-      // third step
-      // create a new friend request
+      // 3- create the new request
       const newFriendRequest = await FriendRequest.create({
         senderID: req.body.senderID,
         receiverID: req.body.receiverID,
         requestStatus: "pending",
       });
-      return res.status(201).json(newFriendRequest);
+
+      return res.status(201).json({
+        message: "Friend Request sent successfully",
+        data: newFriendRequest,
+      });
     }
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    console.log(err);
   }
 };
-exports.cancelDeclineFriendRequest = async (req, res) => {
-  const userData = checkAuth(req);
 
+exports.cancel_declineFriendRequest = async (req, res) => {
   try {
-    const choosePath = req.path.split("/")[3];
-    // check if req doc exists
+    const choosenPath = req.path.split("/")[3];
+
+    // 1 check if the requestDocument exist
     const request = await checkRequestBasedOnStatus(req, "pending");
     if (!request) {
-      return res.status(404).json({ message: "request does not exist" });
+      return res.status(404).json({ message: "The request is not found." });
     }
+
     if (
-      choosePath === actions.cancel &&
-      request.senderID.toString() === userData.data.id.toString()
+      choosenPath === actions.cancel &&
+      request.senderID.toString() === req.body.currentUserID.toString()
     ) {
-      // cancel the request
       request.requestStatus = "cancelled";
-      // we need to wait for the request to be saved in the db
       await request.save();
-      return res.status(200).json({ message: "request has been cancelled" });
+      return res
+        .status(200)
+        .json({ message: "Your request has been cancelled." });
     } else if (
-      choosePath === actions.decline &&
+      choosenPath === actions.decline &&
       request.receiverID.toString() === req.body.currentUserID.toString()
     ) {
-      // decline the request
       request.requestStatus = "declined";
-      // we need to wait for the request to be saved in the db
       await request.save();
-      return res.status(200).json({ message: "request has been declined" });
-    } else {
-      return res
-        .status(409)
-        .json({ message: "you cannot perform this action" });
+      return res.status(200).json({ message: "The request has been declined" });
     }
-  } catch (err) {
-    console.log(err);
-  }
-};
-// get friends request of the sender
-exports.getSenderAllFriendRequests = async (req, res) => {
-  try {
-    const sender = await User.findById(req.body.senderID);
-    if (!sender) {
-      return res.status(404).json({ message: "sender does not exist" });
-    }
-    const friendRequests = await FriendRequest.find({
-      senderID: req.body.senderID,
+    return res.status(401).json({
+      message: `You dont have permission to ${choosenPath} the request`,
     });
-    const countSenderFriendsRequest = friendRequests.length;
-    return res.status(200).json({ friendRequests, countSenderFriendsRequest });
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-// get friend request of the receiver
-exports.getReceiverAllFriendRequests = async (req, res) => {
-  try {
-    const receiver = await User.findById(req.body.receiverID);
-    if (!receiver) {
-      return res.status(404).json({ message: "receiver does not exist" });
-    }
-    const friendRequests = await FriendRequest.find({
-      receiverID: req.body.receiverID,
-    });
-    const countReceiverFriendsRequest = friendRequests.length;
-    return res
-      .status(200)
-      .json({ friendRequests, countReceiverFriendsRequest });
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-exports.getReceiverRequest = async (req, res) => {
-  try {
-    const receiver = await User.findById(req.body.receiverID);
-    if (!receiver) {
-      return res.status(404).json({ message: "receiver does not exist" });
-    }
-    const friendRequest = await FriendRequest.findOne({
-      receiverID: req.body.receiverID,
-      senderID: req.body.senderID,
-    });
-    if (!friendRequest) {
-      return res.status(404).json({ message: "request does not exist" });
-    }
-    return res.status(200).json(friendRequest);
-  } catch (err) {
-    console.log(err);
-  }
-};
-exports.getSenderRequest = async (req, res) => {
-  try {
-    const sender = await User.findById(req.body.senderID);
-    if (!sender) {
-      return res.status(404).json({ message: "sender does not exist" });
-    }
-    const friendRequest = await FriendRequest.findOne({
-      receiverID: req.body.receiverID,
-      senderID: req.body.senderID,
-    });
-    if (!friendRequest) {
-      return res.status(404).json({ message: "request does not exist" });
-    }
-    return res.status(200).json(friendRequest);
   } catch (err) {
     console.log(err);
   }
@@ -165,50 +138,81 @@ exports.getSenderRequest = async (req, res) => {
 
 exports.acceptFriendRequest = async (req, res) => {
   try {
-    const choosePath = req.path.split("/")[3];
+    const choosenPath = req.path.split("/")[3];
     const request = await checkRequestBasedOnStatus(req, "pending");
     if (!request) {
-      return res.status(404).json({
-        message: "req not found",
-      });
+      return res.status(404).json({ message: "The request is not found." });
     }
-    const receiverID = request.receiverID;
+
     const senderID = request.senderID;
+    const receiverID = request.receiverID;
+
     if (
-      choosePath === actions.accept &&
+      choosenPath === actions.accept &&
       receiverID.toString() === req.body.currentUserID.toString()
     ) {
       request.requestStatus = "accepted";
       await request.save();
       const sender = await User.findByIdAndUpdate(
         senderID,
-        {
-          $push: { friends: receiverID },
-        },
+        { $push: { friends: receiverID } },
         { new: true }
       );
-      if (!sender) {
-        return res.status(404).json({ message: "sender does not exist" });
-      }
+      if (!sender)
+        return res.status(404).json({ message: "Sender does not exist" });
+
       const receiver = await User.findByIdAndUpdate(
-        {
-          _id: receiverID,
-        },
-        {
-          $push: { friends: senderID },
-        },
+        { _id: receiverID },
+        { $push: { friends: senderID } },
         { new: true }
       );
-      if (!receiver) {
-        return res.status(404).json({ message: "receiver does not exist" });
-      }
-      return res.status(200).json({ message: "request has been accepted" });
-    } else {
+      if (!receiver)
+        return res.status(404).json({ message: "Receiver does not exist" });
+
       return res
-        .status(409)
-        .json({ message: "you cannot perform this action" });
+        .status(200)
+        .json({ message: "FriendRequest has been accepted" });
     }
+    return res
+      .status(401)
+      .json("You dont have a permission to accept this request");
   } catch (err) {
     console.log(err);
+  }
+};
+
+exports.getSent_Received_Requests = async (req, res) => {
+  try {
+    const path = req.path.split("/")[2];
+    const target = path === "receivedRequests" ? "receiverID" : "senderID";
+    let dataTobePopulated =
+      path === "receivedRequests" ? "senderID" : "receiverID";
+
+    const requests = await FriendRequest.find({
+      $and: [{ [target]: req.params["userID"] }, { requestStatus: "pending" }],
+    }).populate(dataTobePopulated, "fullname email -_id");
+
+    return requests.length <= 0
+      ? res.status(404).json({ message: "You dont have any pending request" })
+      : res.status(200).json(requests);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+};
+
+exports.getFriendsList = async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.params["userID"]).populate(
+      "friends",
+      "fullname profilePicture -_id"
+    );
+
+    return !currentUser
+      ? res.status(401).json({ message: "Please log in to get access" })
+      : res.status(200).json({ friend: currentUser["_doc"]["friends"] });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
   }
 };
